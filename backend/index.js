@@ -26,9 +26,11 @@ function generateExplanation(data, readme) {
   if (readme.includes("Django")) tech.push("Django");
 
   // 🔍 Detect project type
-  if (readme.toLowerCase().includes("api")) type = "Backend API";
-  if (readme.toLowerCase().includes("ui")) type = "Frontend App";
-  if (readme.toLowerCase().includes("fullstack")) type = "Full Stack App";
+  const text = readme.toLowerCase();
+
+  if (text.includes("api")) type = "Backend API";
+  else if (text.includes("ui")) type = "Frontend App";
+  else if (text.includes("fullstack")) type = "Full Stack App";
 
   // 🔍 Difficulty estimation
   if (readme.length > 3000) difficulty = "Intermediate";
@@ -50,7 +52,7 @@ ${tech.length ? tech.join(", ") : data.language || "Not specified"}
 ${difficulty}
 
 ⚙️ What it does:
-This project is mainly built using ${data.language || "various technologies"} and aims to solve a specific problem or provide functionality.
+This project is mainly built using ${data.language || "various technologies"} and aims to solve a specific problem.
 
 ▶️ How to run:
 1. Clone the repository
@@ -60,6 +62,45 @@ This project is mainly built using ${data.language || "various technologies"} an
 📖 README Insights:
 ${readme.substring(0, 500)}
 `;
+}
+
+// 🔥 NEW FEATURE BLOCK
+function analyzeProject(data, readme) {
+  let beginnerLevel = "Intermediate";
+  let useCase = "General Project";
+  let warnings = [];
+
+  const text = readme.toLowerCase();
+
+  // 🎯 Beginner Score
+  if (readme.length < 1500) beginnerLevel = "Beginner";
+  if (readme.length > 4000) beginnerLevel = "Advanced";
+
+  // 🎯 Use Case Detection
+  if (text.includes("chat")) useCase = "Chat Application";
+  else if (text.includes("ecommerce")) useCase = "E-commerce Platform";
+  else if (text.includes("api")) useCase = "Backend API";
+  else if (text.includes("portfolio")) useCase = "Portfolio Website";
+  else if (text.includes("dashboard")) useCase = "Dashboard / Admin Panel";
+
+  // ⚠️ Repo Quality Warnings
+  if (!data.description) {
+    warnings.push("⚠️ No project description provided");
+  }
+
+  if (readme.length < 100) {
+    warnings.push("⚠️ README is too short");
+  }
+
+  if (!data.language) {
+    warnings.push("⚠️ Tech stack not clearly defined");
+  }
+
+  return {
+    beginnerLevel,
+    useCase,
+    warnings
+  };
 }
 
 app.post("/explain", async (req, res) => {
@@ -88,14 +129,22 @@ app.post("/explain", async (req, res) => {
       "base64"
     ).toString("utf-8");
 
-    // 🧠 Generate smart explanation (NO AI API)
+    // 🧠 Generate explanation
     const explanation = generateExplanation(data, readmeContent);
+
+    // 🔥 NEW FEATURES
+    const analysis = analyzeProject(data, readmeContent);
 
     res.json({
       summary: data.description || "No description available",
       techStack: [data.language],
       steps: ["Clone repo", "Install dependencies", "Run project"],
-      explanation: explanation
+      explanation: explanation,
+
+      // 🔥 Added features
+      beginnerLevel: analysis.beginnerLevel,
+      useCase: analysis.useCase,
+      warnings: analysis.warnings
     });
 
   } catch (error) {
